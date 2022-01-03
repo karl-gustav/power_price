@@ -1,0 +1,93 @@
+
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Power price</title>
+</head>
+ 
+<body>
+  <div>
+    <canvas id="myChart"></canvas>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const CHART_COLORS = {
+      red: 'rgb(255, 99, 132)',
+      orange: 'rgb(255, 159, 64)',
+      yellow: 'rgb(255, 205, 86)',
+      green: 'rgb(75, 192, 192)',
+      blue: 'rgb(54, 162, 235)',
+      purple: 'rgb(153, 102, 255)',
+      grey: 'rgb(201, 203, 207)'
+    };
+
+    const lineRentParts = {
+      elCertificateNOK: 0.04950,
+      lineRentEnergyNOK: 0.26988,
+      usageFeeNOK: 0.20863,
+      enovaNOK: 0.01250
+    }
+    const lineRent = lineRentParts.elCertificateNOK+lineRentParts.lineRentEnergyNOK+lineRentParts.usageFeeNOK+lineRentParts.enovaNOK;
+    const now = new Date();
+    const date = now.getFullYear()  + "-" + (now.getMonth()+1) + "-" + now.getDate();
+    const zone = 'NO2'
+    const priceURL = `https://power.ffail.win/?zone=${zone}&date=${date}`
+    const data = {
+      labels: ["00","01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23"],
+      datasets: [
+        {
+          label: 'Price kWh',
+          data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+          backgroundColor: CHART_COLORS.orange,
+        },
+        {
+          label: 'Line rent kWh',
+          data: Array(24).fill(lineRent),
+          backgroundColor: CHART_COLORS.yellow,
+        }
+      ]
+    };
+
+    const config = {
+      type: 'bar',
+      data: data,
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: `Power price in ${zone} ${date}`
+          },
+        },
+        responsive: true,
+        scales: {
+          x: {
+            stacked: true,
+          },
+          y: {
+            min: 0,
+            suggestedMax: 2,
+            stacked: true
+          }
+        }
+      }
+    };
+    const myChart = new Chart(
+      document.getElementById('myChart'),
+      config
+    );
+    fetch(priceURL)
+      .then(r => r.json())
+      .then(obj => Object.keys(obj).map(key => obj[key]))
+      .then(priceInfo => priceInfo.map(price => price.NOK_per_kWh))
+      .then(prices => {
+        data.datasets[0].data = prices;
+        myChart.update();
+      });
+  </script>
+</body>
+</html>

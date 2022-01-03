@@ -29,5 +29,6 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /usr/share/zoneinfo/Europe/Oslo /usr/share/zoneinfo/Europe/Oslo
 
 COPY --from=builder /app/main .
+COPY --from=builder /app/index.html .
 
 CMD ["./main"]

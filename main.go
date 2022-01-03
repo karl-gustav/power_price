@@ -64,6 +64,9 @@ func main() {
 	}
 
 	http.HandleFunc("/", powerPriceHandler)
+	http.HandleFunc("/graph", func(res http.ResponseWriter, req *http.Request) {
+		http.ServeFile(res, req, "index.html")
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
