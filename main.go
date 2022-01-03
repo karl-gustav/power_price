@@ -5,12 +5,13 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/karl-gustav/runlogger"
 )
 
 const (
@@ -28,10 +29,18 @@ var zones = map[string]Zone{
 	"NO5": Zone("10Y1001A1001A48H"),
 }
 
-var availableZones []string
-var loc *time.Location
+var (
+	availableZones []string
+	loc            *time.Location
+	log            *runlogger.Logger
+)
 
 func init() {
+	if os.Getenv("K_SERVICE") != "" { // Check if running in cloud run
+		log = runlogger.StructuredLogger()
+	} else {
+		log = runlogger.PlainLogger()
+	}
 	for zone := range zones {
 		availableZones = append(availableZones, zone)
 	}
@@ -72,8 +81,8 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	log.Println("Serving http://localhost:" + port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Info("Serving http://localhost:" + port)
+	log.Critical(http.ListenAndServe(":"+port, nil))
 }
 
 func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
@@ -115,7 +124,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	var priceForecast map[string]PricePoint
 	cache, err := GetCache(ctx, date, zone)
 	if err != nil {
-		fmt.Printf("got error when retreving cache: %v", err)
+		log.Warning("got error when retreving cache: %v", err)
 	}
 	if len(cache) != 0 {
 		// re-add timezone info because that is lost in firebase
@@ -128,11 +137,13 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	} else {
 		powerPrices, err := getPrice(Zone(zone), date)
 		if err != nil {
+			log.Errorf("got error when running getPrice(`%s`, `%s`): %v", zone, date, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		exchangeRate, err := getExchangeRate("EUR", "NOK")
 		if err != nil {
+			log.Errorf(`got error when running getExchangeRate("EUR", "NOK"): %v`, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -140,6 +151,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 
 		err = StoreCache(ctx, date, zone, priceForecast)
 		if err != nil {
+			log.Errorf("got error when running StoreCache(): %v", err)
 			panic(err)
 		}
 	}
@@ -147,6 +159,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 	res.Header().Set("Cache-Control", "public,max-age=31536000,immutable") // 31536000sec --> 1 year
 	if err = json.NewEncoder(res).Encode(priceForecast); err != nil {
+		log.Errorf("got error when encoding priceForecast: %v", err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

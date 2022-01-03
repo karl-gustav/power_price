@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	masterStorageKey  = "power-price/norway"
-	gcpProject        = "my-cloud-collection"
+	masterStorageKey = "power-price/norway"
+	gcpProject       = "my-cloud-collection"
 )
 
-func StoreCache(ctx context.Context, day time.Time, zone Zone, prices  map[string]PricePoint) error {
+func StoreCache(ctx context.Context, day time.Time, zone Zone, prices map[string]PricePoint) error {
 	client, err := firestore.NewClient(ctx, gcpProject)
 	if err != nil {
 		return err
