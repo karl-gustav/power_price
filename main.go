@@ -72,6 +72,7 @@ func main() {
 		panic("Envionment variable SECURITY_TOKEN is required!")
 	}
 
+	http.HandleFunc("/favicon.ico", notFound)
 	http.HandleFunc("/", powerPriceHandler)
 	http.HandleFunc("/graph", func(res http.ResponseWriter, req *http.Request) {
 		http.ServeFile(res, req, "index.html")
@@ -111,7 +112,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "\"date\" query parameter is a required field", http.StatusBadRequest)
 		return
 	}
-	date, err := time.Parse(stdDateFormat, queryDates[0])
+	date, err := time.ParseInLocation(stdDateFormat, queryDates[0], loc)
 	if err != nil {
 		http.Error(
 			res,
@@ -120,11 +121,15 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		)
 		return
 	}
+	if !isValidTimePeriod(date) {
+		http.Error(res, "price data only become available at 14:00 for the next day", http.StatusBadRequest)
+		return
+	}
 
 	var priceForecast map[string]PricePoint
 	cache, err := GetCache(ctx, date, zone)
 	if err != nil {
-		log.Warning("got error when retreving cache: %v", err)
+		log.Debug("got error when retreving cache: %v", err)
 	}
 	if len(cache) != 0 {
 		// re-add timezone info because that is lost in firebase
@@ -159,7 +164,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 	res.Header().Set("Cache-Control", "public,max-age=31536000,immutable") // 31536000sec --> 1 year
 	if err = json.NewEncoder(res).Encode(priceForecast); err != nil {
-		log.Errorf("got error when encoding priceForecast: %v", err)
+		log.Errorf("got error when encoding priceForecast: %ov", err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -213,7 +218,7 @@ func getPrice(zone Zone, date time.Time) (PublicationMarketDocument, error) {
 	var powerPrices PublicationMarketDocument
 	err = xml.Unmarshal(priceBody, &powerPrices)
 	if err != nil {
-		return PublicationMarketDocument{}, fmt.Errorf("error unmarshaling price xml: %w", err)
+		return PublicationMarketDocument{}, fmt.Errorf("error unmarshaling price xml: %w\n%s", err, priceBody)
 	}
 	return powerPrices, nil
 }
@@ -235,4 +240,26 @@ func getUrl(url string, secrets []string) ([]byte, error) {
 		return nil, fmt.Errorf("None 200 response code %v from %s:\n%s", resp.StatusCode, url, body)
 	}
 	return body, nil
+}
+
+func notFound(res http.ResponseWriter, req *http.Request) {
+	http.Error(res, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+}
+
+func isValidTimePeriod(date time.Time) bool {
+	now := time.Now()
+	startOfDay := getStartOfDay(now)
+	tomorrow := startOfDay.Add(time.Hour * 24)
+
+	if date.Before(tomorrow) {
+		return true
+	} else if date.Equal(tomorrow) {
+		return now.After(startOfDay.Add(time.Hour * 14))
+	}
+	return false
+}
+
+func getStartOfDay(date time.Time) time.Time {
+	year, month, day := date.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, loc)
 }
