@@ -32,8 +32,7 @@
       enovaNOK: 0.01250
     }
     const lineRent = lineRentParts.elCertificateNOK+lineRentParts.lineRentEnergyNOK+lineRentParts.usageFeeNOK+lineRentParts.enovaNOK;
-    const now = new Date();
-    const date = now.getFullYear()  + "-" + (now.getMonth()+1) + "-" + now.getDate();
+    const date = new Date().toISOString().substr(0, 10);
     const zone = 'NO2'
     const priceURL = `https://power.ffail.win/?zone=${zone}&date=${date}`
     const data = {
