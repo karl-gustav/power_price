@@ -97,7 +97,6 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	queryZone := strings.ToUpper(queryZones[0])
 	zone, ok := zones[queryZone]
-
 	if !ok {
 		http.Error(res, fmt.Sprintf(
 			"%s is not a valid zone! Valid zones are %s",
@@ -106,7 +105,27 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		), http.StatusBadRequest)
 		return
 	}
-	var date time.Time
+
+	keys, ok := req.URL.Query()["key"]
+	if !ok || len(keys[0]) < 1 {
+		http.Error(res, "\"key\" query parameter is a required field", http.StatusBadRequest)
+		return
+	}
+	key := keys[0]
+	ok, apiKey, err := GetApiKey(ctx, key)
+	if err != nil {
+		log.Errorf("got error when getting api key for key `%s`: %v", key, err)
+		http.Error(res, "error when verifying api key: "+key, http.StatusInternalServerError)
+		return
+	} else if !ok {
+		log.Warningf("denied %s access to server because of key was not found", key)
+		http.Error(res, "the key you supplied is not in our systems: "+key, http.StatusUnauthorized)
+		return
+	} else if apiKey.Blocked {
+		log.Warningf("denied %s (%s) access to server because of %s", apiKey.Email, key, apiKey.Reason)
+		http.Error(res, "You have lost access to server: "+apiKey.Reason, http.StatusUnauthorized)
+		return
+	}
 	queryDates, ok := req.URL.Query()["date"]
 	if !ok || len(queryDates) < 1 {
 		http.Error(res, "\"date\" query parameter is a required field", http.StatusBadRequest)
@@ -129,7 +148,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	var priceForecast map[string]PricePoint
 	cache, err := GetCache(ctx, date, zone)
 	if err != nil {
-		log.Debug("got error when retreving cache: %v", err)
+		log.Debugf("got error when retreving cache: %v", err)
 	}
 	if len(cache) != 0 {
 		// re-add timezone info because that is lost in firebase
@@ -250,7 +269,6 @@ func isValidTimePeriod(date time.Time) bool {
 	now := time.Now()
 	startOfDay := getStartOfDay(now)
 	tomorrow := startOfDay.Add(time.Hour * 24)
-
 	if date.Before(tomorrow) {
 		return true
 	} else if date.Equal(tomorrow) {

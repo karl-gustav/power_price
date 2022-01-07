@@ -1,10 +1,10 @@
 GPC_PROJECT_ID=my-cloud-collection
-SERVICE_NAME=power-price
+SERVICE_NAME=power-price-test
 CONTAINER_NAME=eu.gcr.io/$(GPC_PROJECT_ID)/$(SERVICE_NAME)
 
 run: build
 	docker run -p 8080:8080 $(CONTAINER_NAME)
-build:
+build: test
 	docker build -t $(CONTAINER_NAME) .
 push: build
 	docker push $(CONTAINER_NAME)

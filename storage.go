@@ -6,12 +6,21 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 const (
-	masterStorageKey = "power-price/norway"
+	priceStorageKey  = "power-price/norway/%s/%s"
+	apiKeyStorageKey = "power-price/api-keys/users/%s"
 	gcpProject       = "my-cloud-collection"
 )
+
+type ApiKey struct {
+	Email   string `firestore:"email"`
+	Blocked bool   `firestore:"blocked"`
+	Reason  string `firestore:"reason"`
+}
 
 func StoreCache(ctx context.Context, day time.Time, zone Zone, prices map[string]PricePoint) error {
 	client, err := firestore.NewClient(ctx, gcpProject)
@@ -20,8 +29,7 @@ func StoreCache(ctx context.Context, day time.Time, zone Zone, prices map[string
 	}
 	defer client.Close()
 	collection := client.Doc(fmt.Sprintf(
-		"%s/%s/%s",
-		masterStorageKey,
+		priceStorageKey,
 		zone,
 		day.Format(stdDateFormat),
 	))
@@ -37,8 +45,7 @@ func GetCache(ctx context.Context, day time.Time, zone Zone) (map[string]PricePo
 	}
 	defer client.Close()
 	containerRef := client.Doc(fmt.Sprintf(
-		"%s/%s/%s",
-		masterStorageKey,
+		priceStorageKey,
 		zone,
 		day.Format(stdDateFormat),
 	))
@@ -52,4 +59,27 @@ func GetCache(ctx context.Context, day time.Time, zone Zone) (map[string]PricePo
 		return nil, err
 	}
 	return container, nil
+}
+
+func GetApiKey(ctx context.Context, key string) (ok bool, apiKey *ApiKey, err error) {
+	client, err := firestore.NewClient(ctx, gcpProject)
+	if err != nil {
+		return false, nil, err
+	}
+	containerRef := client.Doc(fmt.Sprintf(
+		apiKeyStorageKey,
+		key,
+	))
+	document, err := containerRef.Get(ctx)
+	if err != nil {
+		if grpc.Code(err) == codes.NotFound {
+			return false, nil, nil
+		}
+		return false, nil, err
+	}
+	err = document.DataTo(&apiKey)
+	if err != nil {
+		return false, nil, err
+	}
+	return true, apiKey, nil
 }
