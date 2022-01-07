@@ -10,7 +10,7 @@ import (
 
 const (
 	priceURL         = "https://transparency.entsoe.eu/api?documentType=A44&in_Domain=%s&out_Domain=%s&periodStart=%s2300&periodEnd=%s2300&securityToken=%s"
-	currencyURL      = "https://data.norges-bank.no/api/data/EXR/M.%s.%s.SP?lastNObservations=1"
+	currencyURL      = "https://data.norges-bank.no/api/data/EXR/M.%s.%s.SP?startPeriod=%s&endPeriod=%s"
 	entsoeDateFormat = "20060102"
 )
 
@@ -60,8 +60,14 @@ func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate f
 	return priceForecast
 }
 
-func GetExchangeRate(fromCurrency, toCurrency string) (float64, error) {
-	url := fmt.Sprintf(currencyURL, fromCurrency, toCurrency)
+func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (float64, error) {
+	url := fmt.Sprintf(
+		currencyURL,
+		fromCurrency,
+		toCurrency,
+		date.Format(common.StdDateFormat),
+		date.Format(common.StdDateFormat),
+	)
 	exchangeRateInfoBody, err := common.GetUrl(url, []string{})
 	if err != nil {
 		return 0, err
