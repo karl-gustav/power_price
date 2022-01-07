@@ -2,37 +2,25 @@ package main
 
 import (
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
-	"io/ioutil"
-	"math"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/karl-gustav/power_price/calculator"
+	"github.com/karl-gustav/power_price/common"
+	"github.com/karl-gustav/power_price/storage"
 	"github.com/karl-gustav/runlogger"
 )
 
 const (
-	priceURL         = "https://transparency.entsoe.eu/api?documentType=A44&in_Domain=%s&out_Domain=%s&periodStart=%s2300&periodEnd=%s2300&securityToken=%s"
-	currencyURL      = "https://data.norges-bank.no/api/data/EXR/M.%s.%s.SP?lastNObservations=1"
-	stdDateFormat    = "2006-01-02"
-	entsoeDateFormat = "20060102"
+	missingKeyMessage = "send an email to ffaildotwin@gmail.com to get a free API key"
 )
 
-var zones = map[string]Zone{
-	"NO1": Zone("10YNO-1--------2"),
-	"NO2": Zone("10YNO-2--------T"),
-	"NO3": Zone("10YNO-3--------J"),
-	"NO4": Zone("10YNO-4--------9"),
-	"NO5": Zone("10Y1001A1001A48H"),
-}
-
 var (
-	availableZones []string
-	loc            *time.Location
-	log            *runlogger.Logger
+	loc *time.Location
+	log *runlogger.Logger
 )
 
 func init() {
@@ -40,9 +28,6 @@ func init() {
 		log = runlogger.StructuredLogger()
 	} else {
 		log = runlogger.PlainLogger()
-	}
-	for zone := range zones {
-		availableZones = append(availableZones, zone)
 	}
 	var err error
 	loc, err = time.LoadLocation("Europe/Oslo")
@@ -52,20 +37,6 @@ func init() {
 }
 
 var SECURITY_TOKEN = os.Getenv("SECURITY_TOKEN")
-
-type Zone string
-
-type MyFloat float64
-
-func (mf MyFloat) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("%.4f", float64(mf))), nil
-}
-
-type PricePoint struct {
-	PriceNOK MyFloat   `json:"NOK_per_kWh"`
-	From     time.Time `json:"valid_from"`
-	To       time.Time `json:"valid_to"`
-}
 
 func main() {
 	if SECURITY_TOKEN == "" {
@@ -96,30 +67,31 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	queryZone := strings.ToUpper(queryZones[0])
-	zone, ok := zones[queryZone]
+	zone, ok := calculator.Zones[queryZone]
 	if !ok {
 		http.Error(res, fmt.Sprintf(
 			"%s is not a valid zone! Valid zones are %s",
 			queryZone,
-			strings.Join(availableZones, ", "),
+			strings.Join(calculator.AvailableZones, ", "),
 		), http.StatusBadRequest)
 		return
 	}
 
 	keys, ok := req.URL.Query()["key"]
 	if !ok || len(keys[0]) < 1 {
-		http.Error(res, "\"key\" query parameter is a required field", http.StatusBadRequest)
+		http.Error(res, "\"key\" query parameter is a required field\n"+missingKeyMessage, http.StatusBadRequest)
 		return
 	}
 	key := keys[0]
-	ok, apiKey, err := GetApiKey(ctx, key)
+	ok, apiKey, err := storage.GetApiKey(ctx, key)
 	if err != nil {
 		log.Errorf("got error when getting api key for key `%s`: %v", key, err)
 		http.Error(res, "error when verifying api key: "+key, http.StatusInternalServerError)
 		return
 	} else if !ok {
 		log.Warningf("denied %s access to server because of key was not found", key)
-		http.Error(res, "the key you supplied is not in our systems: "+key, http.StatusUnauthorized)
+		m := fmt.Sprintf("the key you supplied is not in our systems: %s\n%s", key, missingKeyMessage)
+		http.Error(res, m, http.StatusUnauthorized)
 		return
 	} else if apiKey.Blocked {
 		log.Warningf("denied %s (%s) access to server because of %s", apiKey.Email, key, apiKey.Reason)
@@ -131,11 +103,11 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "\"date\" query parameter is a required field", http.StatusBadRequest)
 		return
 	}
-	date, err := time.ParseInLocation(stdDateFormat, queryDates[0], loc)
+	date, err := time.ParseInLocation(common.StdDateFormat, queryDates[0], loc)
 	if err != nil {
 		http.Error(
 			res,
-			fmt.Sprintf("Could not parse %s, in the format %s", queryDates[0], stdDateFormat),
+			fmt.Sprintf("Could not parse %s, in the format %s", queryDates[0], common.StdDateFormat),
 			http.StatusBadRequest,
 		)
 		return
@@ -145,8 +117,8 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var priceForecast map[string]PricePoint
-	cache, err := GetCache(ctx, date, zone)
+	var priceForecast map[string]calculator.PricePoint
+	cache, err := storage.GetCache(ctx, date, zone)
 	if err != nil {
 		log.Debugf("got error when retreving cache: %v", err)
 	}
@@ -159,21 +131,21 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		}
 		priceForecast = cache
 	} else {
-		powerPrices, err := getPrice(Zone(zone), date)
+		powerPrices, err := calculator.GetPrice(calculator.Zone(zone), date, SECURITY_TOKEN)
 		if err != nil {
 			log.Errorf("got error when running getPrice(`%s`, `%s`): %v", zone, date, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		exchangeRate, err := getExchangeRate("EUR", "NOK")
+		exchangeRate, err := calculator.GetExchangeRate("EUR", "NOK")
 		if err != nil {
 			log.Errorf(`got error when running getExchangeRate("EUR", "NOK"): %v`, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		priceForecast = calculatePriceForcast(powerPrices, exchangeRate)
+		priceForecast = calculator.CalculatePriceForcast(powerPrices, exchangeRate, loc)
 
-		err = StoreCache(ctx, date, zone, priceForecast)
+		err = storage.StoreCache(ctx, date, zone, priceForecast)
 		if err != nil {
 			log.Errorf("got error when running StoreCache(): %v", err)
 			panic(err)
@@ -187,78 +159,6 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func calculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate float64) map[string]PricePoint {
-	priceForecast := map[string]PricePoint{}
-	for _, price := range powerPrices.TimeSeries.Period.Point {
-		pricePerKWh := price.PriceAmount / 1000 // original price is in MWh
-		startDate := powerPrices.PeriodTimeInterval.Start.In(loc)
-		startOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position-1, 0, 0, 0, loc)
-		endOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position, 0, 0, 0, loc)
-		priceForecast[startOfPeriod.Format(time.RFC3339)] = PricePoint{
-			MyFloat(pricePerKWh * exchangeRate),
-			startOfPeriod,
-			endOfPeriod,
-		}
-	}
-	return priceForecast
-}
-
-func getExchangeRate(from, to string) (float64, error) {
-	url := fmt.Sprintf(currencyURL, from, to)
-	exchangeRateInfoBody, err := getUrl(url, []string{})
-	if err != nil {
-		return 0, err
-	}
-	var exchangeRateInfo ExchangeRateInfo
-	err = xml.Unmarshal(exchangeRateInfoBody, &exchangeRateInfo)
-	if err != nil {
-		return 0, err
-	}
-
-	return exchangeRateInfo.DataSet.Series.Obs.OBSVALUE / math.Pow10(exchangeRateInfo.DataSet.Series.UNITMULT), nil
-}
-
-func getPrice(zone Zone, date time.Time) (PublicationMarketDocument, error) {
-	startDate := date.Add(-24 * time.Hour)
-	url := fmt.Sprintf(
-		priceURL,
-		zone,
-		zone,
-		startDate.Format(entsoeDateFormat),
-		date.Format(entsoeDateFormat),
-		SECURITY_TOKEN,
-	)
-	priceBody, err := getUrl(url, []string{SECURITY_TOKEN})
-	if err != nil {
-		return PublicationMarketDocument{}, err
-	}
-	var powerPrices PublicationMarketDocument
-	err = xml.Unmarshal(priceBody, &powerPrices)
-	if err != nil {
-		return PublicationMarketDocument{}, fmt.Errorf("error unmarshaling price xml: %w\n%s", err, priceBody)
-	}
-	return powerPrices, nil
-}
-
-func getUrl(url string, secrets []string) ([]byte, error) {
-	resp, err := http.Get(url)
-	for _, secret := range secrets {
-		url = strings.ReplaceAll(url, secret, "***secret***")
-	}
-	if err != nil {
-		return nil, fmt.Errorf("Couldn't make GET request to %s:\n%v", url, err)
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("None 200 response code %v from %s:\n%s", resp.StatusCode, url, body)
-	}
-	return body, nil
 }
 
 func notFound(res http.ResponseWriter, req *http.Request) {

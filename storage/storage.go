@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/karl-gustav/power_price/calculator"
+	"github.com/karl-gustav/power_price/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -20,9 +22,10 @@ type ApiKey struct {
 	Email   string `firestore:"email"`
 	Blocked bool   `firestore:"blocked"`
 	Reason  string `firestore:"reason"`
+	Name    string `firestore:"name"`
 }
 
-func StoreCache(ctx context.Context, day time.Time, zone Zone, prices map[string]PricePoint) error {
+func StoreCache(ctx context.Context, day time.Time, zone calculator.Zone, prices map[string]calculator.PricePoint) error {
 	client, err := firestore.NewClient(ctx, gcpProject)
 	if err != nil {
 		return err
@@ -31,14 +34,14 @@ func StoreCache(ctx context.Context, day time.Time, zone Zone, prices map[string
 	collection := client.Doc(fmt.Sprintf(
 		priceStorageKey,
 		zone,
-		day.Format(stdDateFormat),
+		day.Format(common.StdDateFormat),
 	))
 
 	_, err = collection.Set(ctx, prices)
 	return err
 }
 
-func GetCache(ctx context.Context, day time.Time, zone Zone) (map[string]PricePoint, error) {
+func GetCache(ctx context.Context, day time.Time, zone calculator.Zone) (map[string]calculator.PricePoint, error) {
 	client, err := firestore.NewClient(ctx, gcpProject)
 	if err != nil {
 		return nil, err
@@ -47,13 +50,13 @@ func GetCache(ctx context.Context, day time.Time, zone Zone) (map[string]PricePo
 	containerRef := client.Doc(fmt.Sprintf(
 		priceStorageKey,
 		zone,
-		day.Format(stdDateFormat),
+		day.Format(common.StdDateFormat),
 	))
 	document, err := containerRef.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	container := make(map[string]PricePoint)
+	container := make(map[string]calculator.PricePoint)
 	err = document.DataTo(&container)
 	if err != nil {
 		return nil, err
