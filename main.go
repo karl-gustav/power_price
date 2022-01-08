@@ -61,12 +61,11 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 
 	res.Header().Set("Access-Control-Allow-Origin", "*")
-	queryZones, ok := req.URL.Query()["zone"]
-	if !ok || len(queryZones[0]) < 1 {
+	queryZone := req.URL.Query().Get("zone")
+	if queryZone == "" {
 		http.Error(res, "\"zone\" query parameter is a required field", http.StatusBadRequest)
 		return
 	}
-	queryZone := strings.ToUpper(queryZones[0])
 	zone, ok := calculator.Zones[queryZone]
 	if !ok {
 		http.Error(res, fmt.Sprintf(
@@ -77,12 +76,11 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	keys, ok := req.URL.Query()["key"]
-	if !ok || len(keys[0]) < 1 {
+	key := req.URL.Query().Get("key")
+	if key == "" {
 		http.Error(res, "\"key\" query parameter is a required field\n"+missingKeyMessage, http.StatusBadRequest)
 		return
 	}
-	key := keys[0]
 	ok, apiKey, err := storage.GetApiKey(ctx, key)
 	if err != nil {
 		log.Errorf("got error when getting api key for key `%s`: %v", key, err)
@@ -98,16 +96,16 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "You have lost access to server: "+apiKey.Reason, http.StatusUnauthorized)
 		return
 	}
-	queryDates, ok := req.URL.Query()["date"]
-	if !ok || len(queryDates) < 1 {
+	queryDate := req.URL.Query().Get("date")
+	if queryDate == "" {
 		http.Error(res, "\"date\" query parameter is a required field", http.StatusBadRequest)
 		return
 	}
-	date, err := time.ParseInLocation(common.StdDateFormat, queryDates[0], loc)
+	date, err := time.ParseInLocation(common.StdDateFormat, queryDate, loc)
 	if err != nil {
 		http.Error(
 			res,
-			fmt.Sprintf("Could not parse %s, in the format %s", queryDates[0], common.StdDateFormat),
+			fmt.Sprintf("Could not parse %s, in the format %s", queryDate, common.StdDateFormat),
 			http.StatusBadRequest,
 		)
 		return
