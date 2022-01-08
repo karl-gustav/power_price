@@ -18,6 +18,7 @@ func StoreCache(ctx context.Context, day time.Time, zone Zone, prices map[string
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 	collection := client.Doc(fmt.Sprintf(
 		"%s/%s/%s",
 		masterStorageKey,
@@ -34,6 +35,7 @@ func GetCache(ctx context.Context, day time.Time, zone Zone) (map[string]PricePo
 	if err != nil {
 		return nil, err
 	}
+	defer client.Close()
 	containerRef := client.Doc(fmt.Sprintf(
 		"%s/%s/%s",
 		masterStorageKey,

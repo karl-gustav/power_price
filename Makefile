@@ -16,7 +16,7 @@ deploy: login-lpass push
 		--region europe-west1\
 		--platform managed\
 		--set-env-vars SECURITY_TOKEN=$$(lpass show entsoe.eu --field=web-api-security-token)\
-		--memory 256Mi\
+		--memory 128Mi\
 		--image $(CONTAINER_NAME)
 use-latest-version:
 	gcloud alpha run services update-traffic $(SERVICE_NAME)\
