@@ -33,8 +33,19 @@
     }
     const lineRent = lineRentParts.elCertificateNOK+lineRentParts.lineRentEnergyNOK+lineRentParts.usageFeeNOK+lineRentParts.enovaNOK;
     const date = new Date().toISOString().substr(0, 10);
-    const zone = 'NO2'
-    const priceURL = `https://power.ffail.win/?zone=${zone}&date=${date}`
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get("key");
+    if (key == null) {
+		document.body.innerText = "you need a api key to use this, send an email to " 
+			+ "ffaildotwin@gmail.com to get a free API key";
+		throw new Error("missing key query parameter");
+    }
+    let zone = params.get("zone");
+    if (zone == null) {
+		window.history.pushState("", document.title, window.location.href += "&zone=NO2");
+	}
+
+    const priceURL = `https://power.ffail.win/?zone=${zone}&date=${date}&key=${key}`
     const data = {
       labels: ["00","01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23"],
       datasets: [
