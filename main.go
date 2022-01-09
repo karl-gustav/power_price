@@ -10,6 +10,7 @@ import (
 
 	"github.com/karl-gustav/power_price/calculator"
 	"github.com/karl-gustav/power_price/common"
+	"github.com/karl-gustav/power_price/currency"
 	"github.com/karl-gustav/power_price/storage"
 	"github.com/karl-gustav/runlogger"
 )
@@ -135,7 +136,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		exchangeRate, err := calculator.GetExchangeRate("EUR", "NOK")
+		exchangeRate, err := currency.GetExchangeRate("EUR", "NOK", date)
 		if err != nil {
 			log.Errorf(`got error when running getExchangeRate("EUR", "NOK"): %v`, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
