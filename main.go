@@ -135,7 +135,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		exchangeRate, err := calculator.GetExchangeRate("EUR", "NOK", date)
+		exchangeRate, err := calculator.GetExchangeRate("EUR", "NOK")
 		if err != nil {
 			log.Errorf(`got error when running getExchangeRate("EUR", "NOK"): %v`, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
