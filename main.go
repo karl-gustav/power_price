@@ -78,7 +78,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 
 	key := req.URL.Query().Get("key")
 	if key == "" {
-		http.Error(res, "\"key\" query parameter is a required field\n"+missingKeyMessage, http.StatusBadRequest)
+		http.Error(res, "\"key\" query parameter is a required field\n"+missingKeyMessage, http.StatusUnauthorized)
 		return
 	}
 	ok, apiKey, err := storage.GetApiKey(ctx, key)
@@ -93,7 +93,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	} else if apiKey.Blocked {
 		log.Warningf("denied %s (%s) access to server because of %s", apiKey.Email, key, apiKey.Reason)
-		http.Error(res, "You have lost access to server: "+apiKey.Reason, http.StatusUnauthorized)
+		http.Error(res, "You have lost access to server: "+apiKey.Reason, http.StatusForbidden)
 		return
 	}
 	queryDate := req.URL.Query().Get("date")
