@@ -69,6 +69,7 @@ func GetApiKey(ctx context.Context, key string) (ok bool, apiKey *ApiKey, err er
 	if err != nil {
 		return false, nil, err
 	}
+	defer client.Close()
 	containerRef := client.Doc(fmt.Sprintf(
 		apiKeyStorageKey,
 		key,
