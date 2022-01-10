@@ -5,11 +5,22 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
 	StdDateFormat = "2006-01-02"
 )
+
+var Loc *time.Location
+
+func init() {
+	var err error
+	Loc, err = time.LoadLocation("Europe/Oslo")
+	if err != nil {
+		panic(err)
+	}
+}
 
 func GetUrl(url string, secrets []string) ([]byte, error) {
 	resp, err := http.Get(url)

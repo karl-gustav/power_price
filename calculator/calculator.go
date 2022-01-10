@@ -43,13 +43,13 @@ func init() {
 	}
 }
 
-func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate float64, loc *time.Location) map[string]PricePoint {
+func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate float64) map[string]PricePoint {
 	priceForecast := map[string]PricePoint{}
 	for _, price := range powerPrices.TimeSeries.Period.Point {
 		pricePerKWh := price.PriceAmount / 1000 // original price is in MWh
-		startDate := powerPrices.PeriodTimeInterval.Start.In(loc)
-		startOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position-1, 0, 0, 0, loc)
-		endOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position, 0, 0, 0, loc)
+		startDate := powerPrices.PeriodTimeInterval.Start.In(common.Loc)
+		startOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position-1, 0, 0, 0, common.Loc)
+		endOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position, 0, 0, 0, common.Loc)
 		priceForecast[startOfPeriod.Format(time.RFC3339)] = PricePoint{
 			MyFloat(pricePerKWh * exchangeRate),
 			startOfPeriod,

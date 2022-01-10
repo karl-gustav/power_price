@@ -20,7 +20,6 @@ const (
 )
 
 var (
-	loc *time.Location
 	log *runlogger.Logger
 )
 
@@ -29,11 +28,6 @@ func init() {
 		log = runlogger.StructuredLogger()
 	} else {
 		log = runlogger.PlainLogger()
-	}
-	var err error
-	loc, err = time.LoadLocation("Europe/Oslo")
-	if err != nil {
-		panic(err)
 	}
 }
 
@@ -102,7 +96,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "\"date\" query parameter is a required field", http.StatusBadRequest)
 		return
 	}
-	date, err := time.ParseInLocation(common.StdDateFormat, queryDate, loc)
+	date, err := time.ParseInLocation(common.StdDateFormat, queryDate, common.Loc)
 	if err != nil {
 		http.Error(
 			res,
@@ -124,8 +118,8 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	if len(cache) != 0 {
 		// re-add timezone info because that is lost in firebase
 		for key, pricePoint := range cache {
-			pricePoint.From = pricePoint.From.In(loc)
-			pricePoint.To = pricePoint.To.In(loc)
+			pricePoint.From = pricePoint.From.In(common.Loc)
+			pricePoint.To = pricePoint.To.In(common.Loc)
 			cache[key] = pricePoint
 		}
 		priceForecast = cache
@@ -142,7 +136,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		priceForecast = calculator.CalculatePriceForcast(powerPrices, exchangeRate, loc)
+		priceForecast = calculator.CalculatePriceForcast(powerPrices, exchangeRate)
 
 		err = storage.StoreCache(ctx, date, zone, priceForecast)
 		if err != nil {
@@ -178,5 +172,5 @@ func isValidTimePeriod(date time.Time) bool {
 
 func getStartOfDay(date time.Time) time.Time {
 	year, month, day := date.Date()
-	return time.Date(year, month, day, 0, 0, 0, 0, loc)
+	return time.Date(year, month, day, 0, 0, 0, 0, common.Loc)
 }
