@@ -15,13 +15,12 @@ const (
 )
 
 func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (float64, error) {
-	date = findValidDate(date) //can't use weekends or future dates
 	url := fmt.Sprintf(
 		currencyURL,
 		fromCurrency,
 		toCurrency,
 		date.Format(common.StdDateFormat),
-		date.Format(common.StdDateFormat),
+		date.AddDate(0, 0, -7).Format(common.StdDateFormat),
 	)
 	exchangeRateInfoBody, err := common.GetUrl(url, []string{})
 	if err != nil {
@@ -39,67 +38,12 @@ func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (float64, 
 			multiplicator, _ = strconv.Atoi(attr.Value)
 		}
 	}
+	obs := exchangeRateInfo.DataSet.Series.Obs
 
-	return exchangeRateInfo.DataSet.Series.Obs.ObsValue.Value / math.Pow10(multiplicator), nil
-}
-
-// findValidDate changes a date to make sure it is on weekdays and not in
-// the future
-func findValidDate(date time.Time) time.Time {
-	now := time.Now()
-	if date.After(now) {
-		date = now
-	}
-	switch date.Weekday() {
-	case time.Saturday:
-		date = date.AddDate(0, 0, -1)
-	case time.Sunday:
-		date = date.AddDate(0, 0, -2)
-	}
-	return date
+	return obs[len(obs)-1].ObsValue.Value / math.Pow10(multiplicator), nil
 }
 
 type ExchangeRateInfo struct {
-	XMLName xml.Name `xml:"GenericData"`
-	Text    string   `xml:",chardata"`
-	Footer  string   `xml:"footer,attr"`
-	Generic string   `xml:"generic,attr"`
-	Common  string   `xml:"common,attr"`
-	Message string   `xml:"message,attr"`
-	Xsi     string   `xml:"xsi,attr"`
-	XML     string   `xml:"xml,attr"`
-	/*	Header  struct {
-		Text     string `xml:",chardata"`
-		ID       string `xml:"ID"`
-		Test     string `xml:"Test"`
-		Prepared string `xml:"Prepared"`
-		Sender   struct {
-			Text string `xml:",chardata"`
-			ID   string `xml:"id,attr"`
-		} `xml:"Sender"`
-		Receiver struct {
-			Text string `xml:",chardata"`
-			ID   string `xml:"id,attr"`
-		} `xml:"Receiver"`
-		Structure struct {
-			Text                   string `xml:",chardata"`
-			StructureID            string `xml:"structureID,attr"`
-			DimensionAtObservation string `xml:"dimensionAtObservation,attr"`
-			StructureUsage         struct {
-				Text string `xml:",chardata"`
-				Ref  struct {
-					Text     string `xml:",chardata"`
-					AgencyID string `xml:"agencyID,attr"`
-					ID       string `xml:"id,attr"`
-					Version  string `xml:"version,attr"`
-				} `xml:"Ref"`
-			} `xml:"StructureUsage"`
-		} `xml:"Structure"`
-		DataSetAction  string `xml:"DataSetAction"`
-		Extracted      string `xml:"Extracted"`
-		ReportingBegin string `xml:"ReportingBegin"`
-		ReportingEnd   string `xml:"ReportingEnd"`
-	} `xml:"Header"`*/
 	DataSet struct {
 		Text         string `xml:",chardata"`
 		StructureRef string `xml:"structureRef,attr"`
@@ -121,7 +65,7 @@ type ExchangeRateInfo struct {
 					Value string `xml:"value,attr"`
 				} `xml:"Value"`
 			} `xml:"Attributes"`
-			Obs struct {
+			Obs []struct {
 				Text         string `xml:",chardata"`
 				ObsDimension struct {
 					Text  string `xml:",chardata"`
