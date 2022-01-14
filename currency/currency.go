@@ -15,12 +15,15 @@ const (
 )
 
 func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (float64, error) {
+	if date.After(time.Now()) {
+		date = date.AddDate(0, 0, -1)
+	}
 	url := fmt.Sprintf(
 		currencyURL,
 		fromCurrency,
 		toCurrency,
-		date.Format(common.StdDateFormat),
 		date.AddDate(0, 0, -7).Format(common.StdDateFormat),
+		date.Format(common.StdDateFormat),
 	)
 	exchangeRateInfoBody, err := common.GetUrl(url, []string{})
 	if err != nil {
