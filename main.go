@@ -58,7 +58,11 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 	queryZone := req.URL.Query().Get("zone")
 	if queryZone == "" {
-		http.Error(res, "\"zone\" query parameter is a required field", http.StatusBadRequest)
+		m := fmt.Sprintf(
+			"\"zone\" query parameter is a required field. Valid zones are %s",
+			strings.Join(calculator.AvailableZones, ", "),
+		)
+		http.Error(res, m, http.StatusBadRequest)
 		return
 	}
 	zone, ok := calculator.Zones[queryZone]
@@ -68,6 +72,29 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 			queryZone,
 			strings.Join(calculator.AvailableZones, ", "),
 		), http.StatusBadRequest)
+		return
+	}
+
+	queryDate := req.URL.Query().Get("date")
+	if queryDate == "" {
+		m := fmt.Sprintf(
+			"\"date\" query parameter is a required field. Date uses this format %s",
+			common.StdDateFormat,
+		)
+		http.Error(res, m, http.StatusBadRequest)
+		return
+	}
+	date, err := time.ParseInLocation(common.StdDateFormat, queryDate, common.Loc)
+	if err != nil {
+		http.Error(
+			res,
+			fmt.Sprintf("Could not parse %s, in the format %s", queryDate, common.StdDateFormat),
+			http.StatusBadRequest,
+		)
+		return
+	}
+	if !isValidTimePeriod(date) {
+		http.Error(res, "price data only become available at 14:00 for the next day", http.StatusBadRequest)
 		return
 	}
 
@@ -89,24 +116,6 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	} else if apiKey.Blocked {
 		log.Warningf("denied %s (%s) access to server because of %s", apiKey.Email, key, apiKey.Reason)
 		http.Error(res, "You have lost access to server: "+apiKey.Reason, http.StatusForbidden)
-		return
-	}
-	queryDate := req.URL.Query().Get("date")
-	if queryDate == "" {
-		http.Error(res, "\"date\" query parameter is a required field", http.StatusBadRequest)
-		return
-	}
-	date, err := time.ParseInLocation(common.StdDateFormat, queryDate, common.Loc)
-	if err != nil {
-		http.Error(
-			res,
-			fmt.Sprintf("Could not parse %s, in the format %s", queryDate, common.StdDateFormat),
-			http.StatusBadRequest,
-		)
-		return
-	}
-	if !isValidTimePeriod(date) {
-		http.Error(res, "price data only become available at 14:00 for the next day", http.StatusBadRequest)
 		return
 	}
 
