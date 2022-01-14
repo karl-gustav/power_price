@@ -41,10 +41,10 @@ func StoreCache(ctx context.Context, day time.Time, zone calculator.Zone, prices
 	return err
 }
 
-func GetCache(ctx context.Context, day time.Time, zone calculator.Zone) (map[string]calculator.PricePoint, error) {
+func GetCache(ctx context.Context, day time.Time, zone calculator.Zone) (ok bool, pricepoints map[string]calculator.PricePoint, err error) {
 	client, err := firestore.NewClient(ctx, gcpProject)
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 	defer client.Close()
 	containerRef := client.Doc(fmt.Sprintf(
@@ -54,14 +54,17 @@ func GetCache(ctx context.Context, day time.Time, zone calculator.Zone) (map[str
 	))
 	document, err := containerRef.Get(ctx)
 	if err != nil {
-		return nil, err
+		if grpc.Code(err) == codes.NotFound {
+			return false, nil, nil
+		}
+		return false, nil, err
 	}
 	container := make(map[string]calculator.PricePoint)
 	err = document.DataTo(&container)
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
-	return container, nil
+	return true, container, nil
 }
 
 func GetApiKey(ctx context.Context, key string) (ok bool, apiKey *ApiKey, err error) {

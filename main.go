@@ -120,9 +120,12 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var priceForecast map[string]calculator.PricePoint
-	cache, err := storage.GetCache(ctx, date, zone)
+	ok, cache, err := storage.GetCache(ctx, date, zone)
+	if !ok {
+		log.Debugf("date/zone %s/%s not found in cache, getting from source", date, zone)
+	}
 	if err != nil {
-		log.Debugf("got error when retreving cache: %v", err)
+		log.Errorf("got error when retreving cache: %v", err)
 	}
 	if len(cache) != 0 {
 		// re-add timezone info because that is lost in firebase
