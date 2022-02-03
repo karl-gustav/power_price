@@ -9,7 +9,7 @@ build: test
 push: build
 	docker push $(CONTAINER_NAME)
 deploy: login-lpass push
-	gcloud beta run deploy $(SERVICE_NAME)\
+	gcloud run deploy $(SERVICE_NAME)\
 		--project $(GPC_PROJECT_ID)\
 		--allow-unauthenticated\
 		-q\
@@ -18,8 +18,9 @@ deploy: login-lpass push
 		--set-env-vars SECURITY_TOKEN=$$(lpass show entsoe.eu --field=web-api-security-token)\
 		--memory 128Mi\
 		--image $(CONTAINER_NAME)
+	# add --no-traffic to not use latest version
 use-latest-version:
-	gcloud alpha run services update-traffic $(SERVICE_NAME)\
+	gcloud run services update-traffic $(SERVICE_NAME)\
 		--to-latest\
 		--project $(GPC_PROJECT_ID)\
 		--region europe-west1\
