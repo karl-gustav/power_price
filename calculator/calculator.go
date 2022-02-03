@@ -35,14 +35,6 @@ var Zones = map[string]Zone{
 	"NO5": Zone("10Y1001A1001A48H"),
 }
 
-var AvailableZones []string
-
-func init() {
-	for zone := range Zones {
-		AvailableZones = append(AvailableZones, zone)
-	}
-}
-
 func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate float64) map[string]PricePoint {
 	priceForecast := map[string]PricePoint{}
 	for _, price := range powerPrices.TimeSeries.Period.Point {

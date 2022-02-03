@@ -58,20 +58,17 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 	queryZone := req.URL.Query().Get("zone")
 	if queryZone == "" {
-		m := fmt.Sprintf(
-			"\"zone\" query parameter is a required field. Valid zones are %s",
-			strings.Join(calculator.AvailableZones, ", "),
-		)
+		m := "\"zone\" query parameter is a required field. Valid zones are NO1, NO2, NO3, NO4 and NO5"
 		http.Error(res, m, http.StatusBadRequest)
 		return
 	}
 	zone, ok := calculator.Zones[queryZone]
 	if !ok {
-		http.Error(res, fmt.Sprintf(
-			"%s is not a valid zone! Valid zones are %s",
-			queryZone,
-			strings.Join(calculator.AvailableZones, ", "),
-		), http.StatusBadRequest)
+		http.Error(
+			res,
+			queryZone+" is not a valid zone! Valid zones are NO1, NO2, NO3, NO4 and NO5",
+			http.StatusBadRequest,
+		)
 		return
 	}
 
