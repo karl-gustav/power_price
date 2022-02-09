@@ -4,6 +4,6 @@ go 1.13
 
 require (
 	cloud.google.com/go/firestore v1.1.1
-	github.com/karl-gustav/runlogger v0.0.3
+	github.com/karl-gustav/runlogger v0.0.4
 	google.golang.org/grpc v1.21.1
 )

@@ -102,7 +102,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	ok, apiKey, err := storage.GetApiKey(ctx, key)
 	if err != nil {
-		log.Errorf("got error when getting api key for key `%s`: %v", key, err)
+		log.Errorf("got error when getting API key for key `%s`: %v", key, err)
 		http.Error(res, "error when verifying api key: "+key, http.StatusInternalServerError)
 		return
 	} else if !ok {
@@ -115,11 +115,37 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "You have lost access to server: "+apiKey.Reason, http.StatusForbidden)
 		return
 	}
+	usage, err := storage.GetKeyUsage(ctx, key)
+	if err != nil {
+		log.Errorf("got error when getting usage for key `%s`: %v", key, err)
+		http.Error(res, "error when getting usage for api key: "+key, http.StatusInternalServerError)
+		return
+	} else if usage.GetZoneCount(queryZone) >= apiKey.Quota {
+		log.Warningf(
+			"blocked access for key `%s` because too many requests over quota(%d) in zone %s: %d",
+			key,
+			apiKey.Quota,
+			queryZone,
+			usage.GetZoneCount(queryZone),
+		)
+		m := fmt.Sprintf(
+			"you have exceeded your daily quota of %d requests for zone %s\n"+
+				"use https://playground-norway-power.ffail.win for testing your code (unlimited use)",
+			apiKey.Quota,
+			queryZone,
+		)
+		http.Error(res, m, http.StatusTooManyRequests)
+		return
+	}
 
 	var priceForecast map[string]calculator.PricePoint
 	ok, cache, err := storage.GetCache(ctx, date, zone)
 	if !ok {
-		log.Debugf("date/zone %s/%s not found in cache, getting from source", date, zone)
+		log.Debugf(
+			"date/zone %s/%s not found in cache, getting from source",
+			date.Format(common.StdDateFormat),
+			zone,
+		)
 	}
 	if err != nil {
 		log.Errorf("got error when retreving cache: %v", err)
@@ -150,7 +176,6 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		err = storage.StoreCache(ctx, date, zone, priceForecast)
 		if err != nil {
 			log.Errorf("got error when running StoreCache(): %v", err)
-			panic(err)
 		}
 	}
 
