@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/karl-gustav/power_price/calculator"
@@ -159,7 +158,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		}
 		priceForecast = cache
 	} else {
-		powerPrices, err := calculator.GetPrice(calculator.Zone(zone), date, SECURITY_TOKEN)
+		powerPrices, err := calculator.GetPrice(zone, date, SECURITY_TOKEN)
 		if err != nil {
 			log.Errorf("got error when running getPrice(`%s`, `%s`): %v", zone, date, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -185,6 +184,10 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		log.Errorf("got error when encoding priceForecast: %ov", err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	err = storage.IncrementKeyUsage(ctx, key, queryZone)
+	if err != nil {
+		log.Errorf("got error when running IncrementKeyUsage(): %v", err)
 	}
 }
 
