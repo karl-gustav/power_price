@@ -61,7 +61,7 @@ func GetPrice(zone Zone, date time.Time, token string) (PublicationMarketDocumen
 		date.Format(entsoeDateFormat),
 		token,
 	)
-	priceBody, err := common.GetUrl(url, []string{token})
+	priceBody, err := common.GetUrl(url, token)
 	if err != nil {
 		return PublicationMarketDocument{}, err
 	}

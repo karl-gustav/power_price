@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -22,12 +23,15 @@ func init() {
 	}
 }
 
-func GetUrl(url string, secrets []string) ([]byte, error) {
+func GetUrl(url string, secrets ...string) ([]byte, error) {
 	resp, err := http.Get(url)
 	for _, secret := range secrets {
 		url = strings.ReplaceAll(url, secret, "***secret***")
 	}
 	if err != nil {
+		for _, secret := range secrets {
+			err = errors.New(strings.ReplaceAll(err.Error(), secret, "***secret***"))
+		}
 		return nil, fmt.Errorf("Couldn't make GET request to %s:\n%v", url, err)
 	}
 	body, err := ioutil.ReadAll(resp.Body)

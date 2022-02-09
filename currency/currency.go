@@ -25,7 +25,7 @@ func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (float64, 
 		date.AddDate(0, 0, -7).Format(common.StdDateFormat),
 		date.Format(common.StdDateFormat),
 	)
-	exchangeRateInfoBody, err := common.GetUrl(url, []string{})
+	exchangeRateInfoBody, err := common.GetUrl(url)
 	if err != nil {
 		return 0, err
 	}
