@@ -19,7 +19,8 @@ const (
 )
 
 var (
-	log *runlogger.Logger
+	log               *runlogger.Logger
+	firstDayInDataset = time.Date(2014, 12, 12, 0, 0, 0, 0, common.Loc)
 )
 
 func init() {
@@ -91,6 +92,10 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	if !isValidTimePeriod(date) {
 		http.Error(res, "price data only become available at 14:00 for the next day", http.StatusBadRequest)
+		return
+	}
+	if date.Before(firstDayInDataset) {
+		http.Error(res, "there isn't any price data from before 2014-12-12", http.StatusBadRequest)
 		return
 	}
 
