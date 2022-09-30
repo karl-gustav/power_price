@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	missingKeyMessage = "send an email to ffaildotwin@gmail.com to get a free API key"
+	missingKeyMessage = "send an email to power@ffail.win to get a free API key"
 )
 
 var (
