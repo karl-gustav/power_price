@@ -2,20 +2,25 @@ GPC_PROJECT_ID=my-cloud-collection
 SERVICE_NAME=power-price
 CONTAINER_NAME=eu.gcr.io/$(GPC_PROJECT_ID)/$(SERVICE_NAME)
 
-run: build
-	docker run -p 8080:8080 $(CONTAINER_NAME)
+OP_SESSION=$(eval OP_SESSION := $$(shell op signin --raw --account my.1password.com))$(OP_SESSION)
+
+run: signin
+	GOOGLE_APPLICATION_CREDENTIALS=~/gcp/gcp_key.json \
+	PORT=8081 \
+	SECURITY_TOKEN=$$(op item get entsoe.eu --fields "Web Api Security Token" --session=$(OP_SESSION)) \
+	go run .
 build: test
 	docker build -t $(CONTAINER_NAME) .
 push: build
 	docker push $(CONTAINER_NAME)
-deploy: login-lpass push
+deploy: signin push
 	gcloud run deploy $(SERVICE_NAME)\
 		--project $(GPC_PROJECT_ID)\
 		--allow-unauthenticated\
 		-q\
 		--region europe-west1\
 		--platform managed\
-		--set-env-vars SECURITY_TOKEN=$$(lpass show entsoe.eu --field=web-api-security-token)\
+		--set-env-vars SECURITY_TOKEN=$$(op item get entsoe.eu --fields "Web Api Security Token" --session=$(OP_SESSION))\
 		--memory 128Mi\
 		--image $(CONTAINER_NAME)
 	# add --no-traffic to not use latest version
@@ -25,7 +30,7 @@ use-latest-version:
 		--project $(GPC_PROJECT_ID)\
 		--region europe-west1\
 		--platform managed
-login-lpass:
-	lpass sync
+signin:
+	@test $(OP_SESSION) && echo ✓ Signin success || (echo ❌ 1password signin failed; exit 1)
 test:
 	go test ./...

@@ -49,10 +49,10 @@ github.com/hashicorp/golang-lru v0.5.1 h1:0hERBMJE1eitiLkihrMvRVBYAkpHzc/J3QdDN+
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024 h1:rBMNdlhTLzJjJSDIjNEXX1Pz3Hmwmz91v+zycvx9PJc=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
-github.com/karl-gustav/runlogger v0.0.3 h1:+gwJvRRs8MfOsVlaxyFnH7OfFG9rCRMzuDlbJQ3qlFI=
-github.com/karl-gustav/runlogger v0.0.3/go.mod h1:Fm9SKv1KcMKXSw1VYi7TNQyf3q4bL1I6dq1ik5OIVsQ=
-github.com/karl-gustav/runlogger v0.0.4 h1:YDTTzFZxOB3sG3r9SlSTEWNDwg/fYVqHbJEGE9dlllg=
-github.com/karl-gustav/runlogger v0.0.4/go.mod h1:Fm9SKv1KcMKXSw1VYi7TNQyf3q4bL1I6dq1ik5OIVsQ=
+github.com/karl-gustav/runlogger v0.0.6 h1:AC0/bY7JQoCh1arIuAl7W/pgF+MzF/0hhX/+mn3oX4E=
+github.com/karl-gustav/runlogger v0.0.6/go.mod h1:Fm9SKv1KcMKXSw1VYi7TNQyf3q4bL1I6dq1ik5OIVsQ=
+github.com/karl-gustav/runlogger v0.0.7 h1:tHcXBBMPkRo3cpklNZXLLUspvQysRNPaDdr7lagnHuc=
+github.com/karl-gustav/runlogger v0.0.7/go.mod h1:Fm9SKv1KcMKXSw1VYi7TNQyf3q4bL1I6dq1ik5OIVsQ=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=

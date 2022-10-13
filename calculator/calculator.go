@@ -1,11 +1,14 @@
 package calculator
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/karl-gustav/power_price/common"
+	"github.com/karl-gustav/power_price/currency"
 )
 
 const (
@@ -13,16 +16,25 @@ const (
 	entsoeDateFormat = "20060102"
 )
 
-type MyFloat float64
-
-func (mf MyFloat) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("%.4f", float64(mf))), nil
+type PricePoint struct {
+	PriceKWhNOK      float64   `json:"NOK_per_kWh" firestore:"PriceKWhNOK"`
+	PriceMWhEUR      float64   `json:"EUR_per_MWh" firestore:"PriceMWhEUR"`
+	ExchangeRate     float64   `json:"exchange_rate" firestore:"ExchangeRate"`
+	ExchangeRateDate string    `json:"exchange_rate_date" firestore:"ExchangeRateDate"`
+	From             time.Time `json:"valid_from" firestore:"From"`
+	To               time.Time `json:"valid_to" firestore:"To"`
 }
 
-type PricePoint struct {
-	PriceNOK MyFloat   `json:"NOK_per_kWh"`
-	From     time.Time `json:"valid_from"`
-	To       time.Time `json:"valid_to"`
+// not using a pointer here because this is used as a value type in a map
+func (p PricePoint) MarshalJSON() ([]byte, error) {
+	type Alias PricePoint
+	alias := Alias(p)
+	alias.PriceKWhNOK = round(alias.PriceKWhNOK, 4)
+	return json.Marshal(alias)
+}
+
+func round(number, decimalPlaces float64) float64 {
+	return math.Round(number*math.Pow(10, decimalPlaces)) / math.Pow(10, decimalPlaces)
 }
 
 type Zone string
@@ -35,23 +47,26 @@ var Zones = map[string]Zone{
 	"NO5": Zone("10Y1001A1001A48H"),
 }
 
-func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate float64) map[string]PricePoint {
+func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate currency.ExchangeRate) map[string]PricePoint {
 	priceForecast := map[string]PricePoint{}
 	startDate := powerPrices.PeriodTimeInterval.Start.In(common.Loc)
 	for _, price := range powerPrices.TimeSeries.Period.Point {
-		pricePerMWh := price.PriceAmount
-		priceInNOK := MyFloat(pricePerMWh * exchangeRate)
-		pricePerKWh := priceInNOK / 1000 // original price is in MWh
+		priceMWhEUR := price.PriceAmount
+		priceMWhNOK := priceMWhEUR * exchangeRate.Rate
+		priceKWhNOK := priceMWhNOK / 1000
 
 		startOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position-1, 0, 0, 0, common.Loc)
 		endOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position, 0, 0, 0, common.Loc)
 		priceForecast[startOfPeriod.Format(time.RFC3339)] = PricePoint{
-			pricePerKWh,
-			startOfPeriod,
-			endOfPeriod,
+			PriceKWhNOK:      priceKWhNOK,
+			PriceMWhEUR:      priceMWhEUR,
+			ExchangeRate:     exchangeRate.Rate,
+			ExchangeRateDate: exchangeRate.Date,
+			From:             startOfPeriod,
+			To:               endOfPeriod,
 		}
 		if price.Position == 24 {
-			startDate = startDate.Add(24 * time.Hour)
+			startDate = startDate.AddDate(0, 0, 1)
 		}
 	}
 	return priceForecast
@@ -74,7 +89,7 @@ func GetPrice(zone Zone, date time.Time, token string) (PublicationMarketDocumen
 	var powerPrices PublicationMarketDocument
 	err = xml.Unmarshal(priceBody, &powerPrices)
 	if err != nil {
-		return PublicationMarketDocument{}, fmt.Errorf("error unmarshaling price xml: %w\n%s", err, priceBody)
+		return PublicationMarketDocument{}, fmt.Errorf("error unmarshaling price xml: %w\n%.4000s", err, priceBody)
 	}
 	return powerPrices, nil
 }

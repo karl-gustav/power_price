@@ -139,6 +139,10 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 			queryZone,
 		)
 		http.Error(res, m, http.StatusTooManyRequests)
+		err = storage.IncrementKeyUsage(ctx, key, queryZone)
+		if err != nil {
+			log.Error("got error when running IncrementKeyUsage():", err)
+		}
 		return
 	}
 
@@ -175,7 +179,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		priceForecast = calculator.CalculatePriceForcast(powerPrices, exchangeRate)
+		priceForecast = calculator.CalculatePriceForcast(powerPrices, *exchangeRate)
 
 		err = storage.StoreCache(ctx, date, zone, priceForecast)
 		if err != nil {
@@ -185,14 +189,14 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "application/json")
 	res.Header().Set("Cache-Control", "public,max-age=31536000,immutable") // 31536000sec --> 1 year
-	if err = json.NewEncoder(res).Encode(priceForecast); err != nil {
+	if err = json.NewEncoder(res).Encode(&priceForecast); err != nil {
 		log.Errorf("got error when encoding priceForecast: %ov", err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = storage.IncrementKeyUsage(ctx, key, queryZone)
 	if err != nil {
-		log.Errorf("got error when running IncrementKeyUsage(): %v", err)
+		log.Error("got error when running IncrementKeyUsage():", err)
 	}
 }
 
