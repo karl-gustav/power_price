@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	priceStoragePath  = "power-price/norway"
+	priceStoragePath  = "power-price/norway-v2"
 	apiKeyStoragePath = "power-price/api-keys/users"
 	gcpProject        = "my-cloud-collection"
 )

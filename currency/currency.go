@@ -14,10 +14,16 @@ const (
 	currencyURL = "https://data.norges-bank.no/api/data/EXR/B.%s.%s.SP?format=sdmx-generic-2.1&startPeriod=%s&endPeriod=%s&locale=en"
 )
 
-func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (float64, error) {
-	if date.After(time.Now()) {
-		date = date.AddDate(0, 0, -1)
-	}
+type ExchangeRate struct {
+	Rate float64
+	Date string
+}
+
+func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (*ExchangeRate, error) {
+	// always use previous days exchange rate
+	date = date.AddDate(0, 0, -1)
+	// get exchange rage 7 days back in time to make sure we get even though there
+	// might be bank holidays, wekends and so on where there are no new exchange rates
 	url := fmt.Sprintf(
 		currencyURL,
 		fromCurrency,
@@ -27,12 +33,12 @@ func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (float64, 
 	)
 	exchangeRateInfoBody, err := common.GetUrl(url)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	var exchangeRateInfo ExchangeRateInfo
+	var exchangeRateInfo ExchangeRateResponse
 	err = xml.Unmarshal(exchangeRateInfoBody, &exchangeRateInfo)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	var multiplicator int
@@ -43,10 +49,13 @@ func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (float64, 
 	}
 	obs := exchangeRateInfo.DataSet.Series.Obs
 
-	return obs[len(obs)-1].ObsValue.Value / math.Pow10(multiplicator), nil
+	return &ExchangeRate{
+		Rate: obs[len(obs)-1].ObsValue.Value / math.Pow10(multiplicator),
+		Date: obs[len(obs)-1].ObsDimension.Value,
+	}, nil
 }
 
-type ExchangeRateInfo struct {
+type ExchangeRateResponse struct {
 	DataSet struct {
 		Text         string `xml:",chardata"`
 		StructureRef string `xml:"structureRef,attr"`
