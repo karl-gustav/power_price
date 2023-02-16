@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	priceURL         = "https://transparency.entsoe.eu/api?documentType=A44&in_Domain=%s&out_Domain=%s&periodStart=%s2300&periodEnd=%s2300&securityToken=%s"
+	priceURL         = "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=%s&out_Domain=%s&periodStart=%s2300&periodEnd=%s2300&securityToken=%s"
+
 	entsoeDateFormat = "20060102"
 )
 
