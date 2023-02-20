@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"errors"
 	"github.com/karl-gustav/power_price/calculator"
 	"github.com/karl-gustav/power_price/common"
 	"github.com/karl-gustav/power_price/currency"
@@ -169,6 +170,11 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	} else {
 		powerPrices, err := calculator.GetPrice(zone, date, SECURITY_TOKEN)
 		if err != nil {
+			if errors.Is(calculator.ErrorDayAheadPricesNotFound, err) {
+				log.Warningf("got Acknowledgement_MarketDocument for zone %s and date %s", zone, date)
+				http.Error(res, err.Error(), http.StatusTooEarly)
+				return
+			}
 			log.Errorf("got error when running getPrice(`%s`, `%s`): %v", zone, date, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -179,7 +185,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		priceForecast = calculator.CalculatePriceForcast(powerPrices, *exchangeRate)
+		priceForecast = calculator.CalculatePriceForcast(*powerPrices, *exchangeRate)
 
 		err = storage.StoreCache(ctx, date, zone, priceForecast)
 		if err != nil {

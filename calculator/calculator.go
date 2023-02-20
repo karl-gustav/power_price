@@ -1,8 +1,10 @@
 package calculator
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -15,6 +17,9 @@ const (
 	priceURL         = "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=%s&out_Domain=%s&periodStart=%s2300&periodEnd=%s2300&securityToken=%s"
 	entsoeDateFormat = "20060102"
 )
+
+var ErrorDayAheadPricesNotFound = errors.New(`The prices for tomorrow was not found on the transparency.entsoe.eu server.
+Try again later or check https://transparency.entsoe.eu/news/widget if there are any delays.`)
 
 type PricePoint struct {
 	PriceKWhNOK      float64   `json:"NOK_per_kWh" firestore:"PriceKWhNOK"`
@@ -72,7 +77,7 @@ func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate c
 	return priceForecast
 }
 
-func GetPrice(zone Zone, date time.Time, token string) (PublicationMarketDocument, error) {
+func GetPrice(zone Zone, date time.Time, token string) (*PublicationMarketDocument, error) {
 	startDate := date.Add(-24 * time.Hour)
 	url := fmt.Sprintf(
 		priceURL,
@@ -84,12 +89,16 @@ func GetPrice(zone Zone, date time.Time, token string) (PublicationMarketDocumen
 	)
 	priceBody, err := common.GetUrl(url, token)
 	if err != nil {
-		return PublicationMarketDocument{}, err
+		return nil, err
 	}
+	if bytes.Contains(priceBody, []byte("<Acknowledgement_MarketDocument")) {
+		return nil, ErrorDayAheadPricesNotFound
+	}
+
 	var powerPrices PublicationMarketDocument
 	err = xml.Unmarshal(priceBody, &powerPrices)
 	if err != nil {
-		return PublicationMarketDocument{}, fmt.Errorf("error unmarshaling price xml: %w\n%.4000s", err, priceBody)
+		return nil, fmt.Errorf("error unmarshaling price xml: %w\n%.4000s", err, priceBody)
 	}
-	return powerPrices, nil
+	return &powerPrices, nil
 }

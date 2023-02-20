@@ -74,3 +74,16 @@ type PublicationMarketDocument struct {
 		} `xml:"Period"`
 	} `xml:"TimeSeries"`
 }
+
+type AcknowledgementMarketDocument struct {
+	MRID                                    string `json:"mRID"`
+	CreatedDateTime                         string `json:"createdDateTime"`
+	SenderMarketParticipantMarketRoleType   string `json:"sender_MarketParticipant.marketRole.type"`
+	ReceiverMarketParticipantMarketRoleType string `json:"receiver_MarketParticipant.marketRole.type"`
+	ReceivedMarketDocumentCreatedDateTime   string `json:"received_MarketDocument.createdDateTime"`
+	Reason                                  struct {
+		Code string `json:"code"`
+		Text string `json:"text"`
+	} `json:"Reason"`
+	Xmlns string `json:"_xmlns"`
+}
