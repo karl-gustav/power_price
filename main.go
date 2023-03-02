@@ -44,6 +44,10 @@ func main() {
 	http.HandleFunc("/graph", func(res http.ResponseWriter, req *http.Request) {
 		http.ServeFile(res, req, "index.html")
 	})
+	http.HandleFunc("/error", func(res http.ResponseWriter, req *http.Request) {
+		log.Errorf("some new error just for the logs")
+		res.Write([]byte("for the logs"))
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
