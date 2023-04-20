@@ -6,7 +6,6 @@ OP_SESSION=$(eval OP_SESSION := $$(shell op signin --raw --account my.1password.
 
 run: signin
 	GOOGLE_APPLICATION_CREDENTIALS=~/gcp/gcp_key.json \
-	PORT=8081 \
 	SECURITY_TOKEN=$$(op item get entsoe.eu --fields "Web Api Security Token" --session=$(OP_SESSION)) \
 	go run .
 build: test
