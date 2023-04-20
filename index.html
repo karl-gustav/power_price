@@ -93,10 +93,8 @@
         }
       }
     };
-    const myChart = new Chart(
-      document.getElementById('myChart'),
-      config
-    );
+    Chart.defaults.color = Chart.defaults.borderColor = "#FFFFFF";
+    const myChart = new Chart(document.getElementById('myChart'), config);
     fetch(priceURL)
       .then(r => r.json())
       .then(obj => Object.keys(obj).map(key => obj[key]))
