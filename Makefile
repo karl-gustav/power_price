@@ -1,3 +1,4 @@
+export DOCKER_BUILDKIT=1
 GPC_PROJECT_ID=my-cloud-collection
 SERVICE_NAME=power-price
 CONTAINER_NAME=eu.gcr.io/$(GPC_PROJECT_ID)/$(SERVICE_NAME)

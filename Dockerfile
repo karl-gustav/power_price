@@ -7,13 +7,16 @@ RUN apk add --no-cache ca-certificates git tzdata
 WORKDIR /app
 
 COPY go.* ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+	go mod download
 
 COPY . .
 
 
 # CGO_ENABLED=0 == Don't depend on libc (bigger but more independent binary)
-RUN env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o main
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+	env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o main
 
 FROM scratch
 WORKDIR /app
