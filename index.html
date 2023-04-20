@@ -44,7 +44,7 @@
 		window.history.pushState(
 			"",
 			document.title,
-			window.location.href += "&date=" + new Date().toISOString().substr(0, 10)
+			window.location.href += "&date=" + new Date().toLocaleDateString("sv")
 		);
     }
     let zone = params.get("zone");
