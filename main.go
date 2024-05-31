@@ -18,6 +18,7 @@ const (
 	currencyURL      = "https://data.norges-bank.no/api/data/EXR/M.%s.%s.SP?lastNObservations=1"
 	stdDateFormat    = "2006-01-02"
 	entsoeDateFormat = "20060102"
+	entsoeSecretKey  = "entsoe-web-api-security-token"
 )
 
 var zones = map[string]Zone{
@@ -30,6 +31,7 @@ var zones = map[string]Zone{
 
 var availableZones []string
 var loc *time.Location
+var securityToken string
 
 func init() {
 	for zone := range zones {
@@ -41,8 +43,6 @@ func init() {
 		panic(err)
 	}
 }
-
-var SECURITY_TOKEN = os.Getenv("SECURITY_TOKEN")
 
 type Zone string
 
@@ -59,8 +59,10 @@ type PricePoint struct {
 }
 
 func main() {
-	if SECURITY_TOKEN == "" {
-		panic("Envionment variable SECURITY_TOKEN is required!")
+	var err error
+	securityToken, err = accessSecretVersion(entsoeSecretKey)
+	if err != nil {
+		panic("Secret manager wasn't able to get entso.eu secret: " + err.Error())
 	}
 
 	http.HandleFunc("/", powerPriceHandler)
@@ -153,7 +155,7 @@ func calculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate f
 	priceForecast := map[string]PricePoint{}
 	for _, price := range powerPrices.TimeSeries.Period.Point {
 		pricePerKWh := price.PriceAmount / 1000 // original price is in MWh
-		startDate := powerPrices.PeriodTimeInterval.Start.In(loc)
+		startDate := powerPrices.gi.Start.In(loc)
 		startOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position-1, 0, 0, 0, loc)
 		endOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position, 0, 0, 0, loc)
 		priceForecast[startOfPeriod.Format(time.RFC3339)] = PricePoint{
@@ -188,9 +190,9 @@ func getPrice(zone Zone, date time.Time) (PublicationMarketDocument, error) {
 		zone,
 		startDate.Format(entsoeDateFormat),
 		date.Format(entsoeDateFormat),
-		SECURITY_TOKEN,
+		securityToken,
 	)
-	priceBody, err := getUrl(url, []string{SECURITY_TOKEN})
+	priceBody, err := getUrl(url, []string{securityToken})
 	if err != nil {
 		return PublicationMarketDocument{}, err
 	}
