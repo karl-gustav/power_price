@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	priceURL         = "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=%s&out_Domain=%s&periodStart=%s2300&periodEnd=%s2300&securityToken=%s"
-	entsoeDateFormat = "20060102"
+	priceURL         = "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=%s&out_Domain=%s&periodStart=%s&periodEnd=%s&securityToken=%s"
+	entsoeDateFormat = "200601021504"
 )
 
 var ErrorDayAheadPricesNotFound = errors.New(`The prices for tomorrow was not found on the transparency.entsoe.eu server.
@@ -78,13 +78,13 @@ func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate c
 }
 
 func GetPrice(zone Zone, date time.Time, token string) (*PublicationMarketDocument, error) {
-	startDate := date.Add(-24 * time.Hour)
+	endDate := date.Add(24 * time.Hour)
 	url := fmt.Sprintf(
 		priceURL,
 		zone,
 		zone,
-		startDate.Format(entsoeDateFormat),
-		date.Format(entsoeDateFormat),
+		date.In(time.UTC).Format(entsoeDateFormat),
+		endDate.In(time.UTC).Format(entsoeDateFormat),
 		token,
 	)
 	priceBody, err := common.GetUrl(url, token)
