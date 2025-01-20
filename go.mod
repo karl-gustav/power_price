@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	cloud.google.com/go/firestore v1.9.0
-	github.com/karl-gustav/runlogger v0.1.1
+	github.com/karl-gustav/runlogger v1.0.0
 	google.golang.org/grpc v1.53.0
 )
 

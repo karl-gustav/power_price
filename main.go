@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
 
-	"errors"
 	"github.com/karl-gustav/power_price/calculator"
 	"github.com/karl-gustav/power_price/common"
 	"github.com/karl-gustav/power_price/currency"
@@ -131,11 +131,13 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	} else if usage.GetZoneCount(queryZone) >= apiKey.Quota {
 		log.Warningf(
-			"blocked access for key `%s` because too many requests over quota(%d) in zone %s: %d",
-			key,
+			"blocked access for %s because too many requests over quota(%d) in zone %s: %d",
+			apiKey.Email,
 			apiKey.Quota,
 			queryZone,
 			usage.GetZoneCount(queryZone),
+			log.Field("email", apiKey.Email),
+			log.Field("key", key),
 		)
 		m := fmt.Sprintf(
 			"you have exceeded your daily quota of %d requests for zone %s\n"+
