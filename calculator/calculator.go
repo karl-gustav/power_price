@@ -18,7 +18,7 @@ const (
 	entsoeDateFormat = "200601021504"
 )
 
-var ErrorDayAheadPricesNotFound = errors.New(`The prices for tomorrow was not found on the transparency.entsoe.eu server.
+var ErrorPricesNotAvialableYet = errors.New(`The prices was not found on the transparency.entsoe.eu server.
 Try again later or check https://transparency.entsoe.eu/news/widget if there are any delays.`)
 
 type PricePoint struct {
