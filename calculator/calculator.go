@@ -92,7 +92,7 @@ func GetPrice(zone Zone, date time.Time, token string) (*PublicationMarketDocume
 		return nil, err
 	}
 	if bytes.Contains(priceBody, []byte("<Acknowledgement_MarketDocument")) {
-		return nil, ErrorDayAheadPricesNotFound
+		return nil, ErrorPricesNotAvialableYet
 	}
 
 	var powerPrices PublicationMarketDocument

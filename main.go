@@ -176,7 +176,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	} else {
 		powerPrices, err := calculator.GetPrice(zone, date, SECURITY_TOKEN)
 		if err != nil {
-			if errors.Is(calculator.ErrorDayAheadPricesNotFound, err) {
+			if errors.Is(calculator.ErrorPricesNotAvialableYet, err) {
 				log.Warningf("got Acknowledgement_MarketDocument for zone %s and date %s", zone, date)
 				http.Error(res, err.Error(), http.StatusTooEarly)
 				return
