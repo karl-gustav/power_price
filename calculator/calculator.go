@@ -55,13 +55,25 @@ var Zones = map[string]Zone{
 func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate currency.ExchangeRate) map[string]PricePoint {
 	priceForecast := map[string]PricePoint{}
 	startDate := powerPrices.PeriodTimeInterval.Start.In(common.Loc)
+	startOfDay := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, common.Loc)
 	for _, price := range powerPrices.TimeSeries.Period.Point {
 		priceMWhEUR := price.PriceAmount
 		priceMWhNOK := priceMWhEUR * exchangeRate.Rate
 		priceKWhNOK := priceMWhNOK / 1000
 
-		startOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position-1, 0, 0, 0, common.Loc)
-		endOfPeriod := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), price.Position, 0, 0, 0, common.Loc)
+		var resolution time.Duration
+		switch powerPrices.TimeSeries.Period.Resolution {
+		case "PT60M":
+			resolution = 60 * time.Minute
+		case "PT15M":
+			resolution = 15 * time.Minute
+		default:
+			panic("unknown resolution of timeseries period: " + powerPrices.TimeSeries.Period.Resolution)
+		}
+
+		startOfPeriod := startOfDay.Add(resolution*time.Duration(price.Position) - resolution)
+		endOfPeriod := startOfDay.Add(resolution * time.Duration(price.Position))
+
 		priceForecast[startOfPeriod.Format(time.RFC3339)] = PricePoint{
 			PriceKWhNOK:      priceKWhNOK,
 			PriceMWhEUR:      priceMWhEUR,
@@ -69,9 +81,6 @@ func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate c
 			ExchangeRateDate: exchangeRate.Date,
 			From:             startOfPeriod,
 			To:               endOfPeriod,
-		}
-		if price.Position == 24 {
-			startDate = startDate.AddDate(0, 0, 1)
 		}
 	}
 	return priceForecast
