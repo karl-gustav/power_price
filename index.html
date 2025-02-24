@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <title>Power price</title>
 </head>
  
@@ -93,7 +93,8 @@
         }
       }
     };
-    Chart.defaults.color = Chart.defaults.borderColor = "#FFFFFF";
+    Chart.defaults.color = "#FFFFFF";
+    Chart.defaults.borderColor = "#D3D3D3";
     const myChart = new Chart(document.getElementById('myChart'), config);
     fetch(priceURL)
       .then(r => r.json())
