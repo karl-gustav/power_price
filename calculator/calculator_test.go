@@ -5,7 +5,9 @@ import (
 	"os"
 	"slices"
 	"testing"
+	"time"
 
+	"github.com/karl-gustav/power_price/common"
 	"github.com/karl-gustav/power_price/currency"
 )
 
@@ -44,6 +46,25 @@ func Test60mResolution(t *testing.T) {
 	if len(powerPrices) != 24 {
 		t.Errorf("expected 24 values in parsed power prices was %d", len(powerPrices))
 	}
+
+	first60MinFrom, _ := time.Parse(time.RFC3339, first60MinDate)
+	first60MinTo := first60MinFrom.Add(1 * time.Hour)
+	if !powerPrices[first60MinDate].From.Equal(first60MinFrom) {
+		t.Errorf("expected first valid_from to be %s, was %s", first60MinFrom.In(common.Loc), powerPrices[first60MinDate].From)
+	}
+	if !powerPrices[first60MinDate].To.Equal(first60MinTo) {
+		t.Errorf("expected first valid_to to be %s, was %s", first60MinTo.In(common.Loc), powerPrices[first60MinDate].To)
+	}
+
+	last60MinFrom, _ := time.Parse(time.RFC3339, last60MinDate)
+	last60MinTo := last60MinFrom.Add(1 * time.Hour)
+	if !powerPrices[last60MinDate].From.Equal(last60MinFrom) {
+		t.Errorf("expected last valid_from to be %s, was %s", last60MinFrom.In(common.Loc), powerPrices[last60MinDate].From)
+	}
+	if !powerPrices[last60MinDate].To.Equal(last60MinTo) {
+		t.Errorf("expected last valid_to to be %s, was %s", last60MinTo.In(common.Loc), powerPrices[last60MinDate].To)
+	}
+
 	if powerPrices[first60MinDate].PriceMWhEUR != first60MinPrice {
 		t.Errorf("expected price to be %f, was %f", first60MinPrice, powerPrices[first60MinDate].PriceMWhEUR)
 	}
@@ -83,10 +104,29 @@ func Test15mResolution(t *testing.T) {
 	if len(powerPrices) != 24 {
 		t.Errorf("expected 24 values in parsed power prices was %d", len(powerPrices))
 	}
+
+	first15MinFrom, _ := time.Parse(time.RFC3339, first15MinDate)
+	first15MinTo := first15MinFrom.Add(1 * time.Hour)
+	if !powerPrices[first15MinDate].From.Equal(first15MinFrom) {
+		t.Errorf("expected valid_from to be %s, was %s", first15MinFrom.In(common.Loc), powerPrices[first15MinDate].From)
+	}
+	if !powerPrices[first15MinDate].To.Equal(first15MinTo) {
+		t.Errorf("expected valid_to to be %s, was %s", first15MinTo.In(common.Loc), powerPrices[first15MinDate].To)
+	}
+
+	last15MinFrom, _ := time.Parse(time.RFC3339, last15MinDate)
+	last15MinTo := last15MinFrom.Add(1 * time.Hour)
+	if !powerPrices[last15MinDate].From.Equal(last15MinFrom) {
+		t.Errorf("expected first valid_from to be %s, was %s", last15MinFrom.In(common.Loc), powerPrices[last15MinDate].From)
+	}
+	if !powerPrices[last15MinDate].To.Equal(last15MinTo) {
+		t.Errorf("expected first valid_to to be %s, was %s", last15MinTo.In(common.Loc), powerPrices[last15MinDate].To)
+	}
+
 	if powerPrices[first15MinDate].PriceMWhEUR != first15MinPrice {
-		t.Errorf("expected price to be %f, was %f", first15MinPrice, powerPrices[first15MinDate].PriceMWhEUR)
+		t.Errorf("expected last price to be %f, was %f", first15MinPrice, powerPrices[first15MinDate].PriceMWhEUR)
 	}
 	if powerPrices[last15MinDate].PriceMWhEUR != last15MinPrice {
-		t.Errorf("expected price to be %f, was %f", last15MinPrice, powerPrices[last15MinDate].PriceMWhEUR)
+		t.Errorf("expected last price to be %f, was %f", last15MinPrice, powerPrices[last15MinDate].PriceMWhEUR)
 	}
 }

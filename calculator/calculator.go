@@ -61,18 +61,18 @@ func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate c
 		priceMWhNOK := priceMWhEUR * exchangeRate.Rate
 		priceKWhNOK := priceMWhNOK / 1000
 
-		var resolution time.Duration
+		var resolution int
 		switch powerPrices.TimeSeries.Period.Resolution {
 		case "PT60M":
-			resolution = 60 * time.Minute
+			resolution = 60
 		case "PT15M":
-			resolution = 15 * time.Minute
+			resolution = 15
 		default:
 			panic("unknown resolution of timeseries period: " + powerPrices.TimeSeries.Period.Resolution)
 		}
 
-		startOfPeriod := startOfDay.Add(resolution*time.Duration(price.Position) - resolution)
-		endOfPeriod := startOfDay.Add(resolution * time.Duration(price.Position))
+		startOfPeriod := startOfDay.Add(time.Duration(resolution*(price.Position-1)) * time.Minute)
+		endOfPeriod := startOfDay.Add(time.Duration(resolution*((price.Position-1)+60/resolution)) * time.Minute)
 
 		priceForecast[startOfPeriod.Format(time.RFC3339)] = PricePoint{
 			PriceKWhNOK:      priceKWhNOK,
