@@ -1,7 +1,7 @@
 export DOCKER_BUILDKIT=1
-GPC_PROJECT_ID=my-cloud-collection
+GCP_PROJECT_ID=my-cloud-collection
 SERVICE_NAME=power-price
-CONTAINER_NAME=eu.gcr.io/$(GPC_PROJECT_ID)/$(SERVICE_NAME)
+CONTAINER_NAME=europe-west1-docker.pkg.dev/$(GCP_PROJECT_ID)/cloud-run/$(SERVICE_NAME)
 
 PORT?=8080
 
@@ -15,7 +15,7 @@ push: build
 	docker push $(CONTAINER_NAME)
 deploy: signin push
 	gcloud run deploy $(SERVICE_NAME)\
-		--project $(GPC_PROJECT_ID)\
+		--project $(GCP_PROJECT_ID)\
 		--allow-unauthenticated\
 		-q\
 		--region europe-west1\
@@ -23,11 +23,21 @@ deploy: signin push
 		--set-env-vars SECURITY_TOKEN=$$(op item get entsoe.eu --fields "Web Api Security Token")\
 		--memory 128Mi\
 		--image $(CONTAINER_NAME)
-	# add --no-traffic to not use latest version
-use-latest-version:
+deploy-staging: signin push
+	gcloud run deploy $(SERVICE_NAME)\
+		--project $(GCP_PROJECT_ID)\
+		--allow-unauthenticated\
+		-q\
+		--region europe-west1\
+		--platform managed\
+		--set-env-vars SECURITY_TOKEN=$$(op item get entsoe.eu --fields "Web Api Security Token")\
+		--memory 128Mi\
+		--no-traffic\
+		--image $(CONTAINER_NAME)
+use-latest:
 	gcloud run services update-traffic $(SERVICE_NAME)\
 		--to-latest\
-		--project $(GPC_PROJECT_ID)\
+		--project $(GCP_PROJECT_ID)\
 		--region europe-west1\
 		--platform managed
 signin:
