@@ -4,62 +4,63 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
+	"cloud.google.com/go/compute/metadata"
+	"github.com/go-chi/chi/v5"
 	"github.com/karl-gustav/power_price/calculator"
 	"github.com/karl-gustav/power_price/common"
 	"github.com/karl-gustav/power_price/currency"
 	"github.com/karl-gustav/power_price/storage"
-	"github.com/karl-gustav/runlogger"
+	"github.com/karl-gustav/slogdriver"
 )
 
 const (
 	missingKeyMessage = "send an email to power@ffail.win to get a free API key"
 )
 
-var (
-	log               *runlogger.Logger
-	firstDayInDataset = time.Date(2014, 12, 12, 0, 0, 0, 0, common.Loc)
-)
-
-func init() {
-	if os.Getenv("K_SERVICE") != "" { // Check if running in cloud run
-		log = runlogger.StructuredLogger()
-	} else {
-		log = runlogger.PlainLogger()
-	}
-}
+var firstDayInDataset = time.Date(2014, 12, 12, 0, 0, 0, 0, common.Loc)
 
 var SECURITY_TOKEN = os.Getenv("SECURITY_TOKEN")
+
+func init() {
+	if slogdriver.OnGCP() {
+		projectID, err := metadata.ProjectID()
+		if err != nil {
+			panic(err)
+		}
+		slog.SetDefault(slog.New(slogdriver.NewCloudHandler(projectID)))
+	} else {
+		slog.SetDefault(slog.New(slogdriver.NewLocalHandler()))
+	}
+}
 
 func main() {
 	if SECURITY_TOKEN == "" {
 		panic("Envionment variable SECURITY_TOKEN is required!")
 	}
 
-	http.HandleFunc("/favicon.ico", notFound)
-	http.HandleFunc("/", powerPriceHandler)
-	http.HandleFunc("/graph", func(res http.ResponseWriter, req *http.Request) {
+	r := chi.NewRouter()
+	r.Use(slogdriver.WithTraceContext)
+	r.Get("/favicon.ico", notFound)
+	r.Get("/", powerPriceHandler)
+	r.Get("/graph", func(res http.ResponseWriter, req *http.Request) {
 		http.ServeFile(res, req, "index.html")
-	})
-	http.HandleFunc("/error", func(res http.ResponseWriter, req *http.Request) {
-		log.Errorf("some new error just for the logs")
-		res.Write([]byte("for the logs"))
 	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	log.Info("Serving http://localhost:" + port)
-	log.Critical(http.ListenAndServe(":"+port, nil))
+	slog.Info("Serving http://localhost:" + port)
+	slog.Error(http.ListenAndServe(":"+port, r).Error())
 }
 
 func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 	queryZone := req.URL.Query().Get("zone")
 	if queryZone == "" {
@@ -111,33 +112,34 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	ok, apiKey, err := storage.GetApiKey(ctx, key)
 	if err != nil {
-		log.Errorf("got error when getting API key for key `%s`: %v", key, err)
+		slog.ErrorContext(ctx, fmt.Sprintf("got error when getting API key for key `%s`: %v", key, err))
 		http.Error(res, "error when verifying api key: "+key, http.StatusInternalServerError)
 		return
 	} else if !ok {
-		log.Warningf("denied %s access to server because of key was not found", key)
+		slog.WarnContext(ctx, fmt.Sprintf("denied %s access to server because of key was not found", key))
 		m := fmt.Sprintf("the key you supplied is not in our systems: %s\n%s", key, missingKeyMessage)
 		http.Error(res, m, http.StatusUnauthorized)
 		return
 	} else if apiKey.Blocked {
-		log.Warningf("denied %s (%s) access to server because of %s", apiKey.Email, key, apiKey.Reason)
+		slog.WarnContext(ctx, fmt.Sprintf("denied %s (%s) access to server because of %s", apiKey.Email, key, apiKey.Reason))
 		http.Error(res, "You have lost access to server: "+apiKey.Reason, http.StatusForbidden)
 		return
 	}
 	usage, err := storage.GetKeyUsage(ctx, key)
 	if err != nil {
-		log.Errorf("got error when getting usage for key `%s`: %v", key, err)
+		slog.ErrorContext(ctx, fmt.Sprintf("got error when getting usage for key `%s`: %v", key, err))
 		http.Error(res, "error when getting usage for api key: "+key, http.StatusInternalServerError)
 		return
 	} else if usage.GetZoneCount(queryZone) >= apiKey.Quota {
-		log.Warningf(
+		slog.WarnContext(ctx, fmt.Sprintf(
 			"blocked access for %s because too many requests over quota(%d) in zone %s: %d",
 			apiKey.Email,
 			apiKey.Quota,
 			queryZone,
 			usage.GetZoneCount(queryZone),
-			log.Field("email", apiKey.Email),
-			log.Field("key", key),
+		),
+			slog.String("email", apiKey.Email),
+			slog.String("key", key),
 		)
 		m := fmt.Sprintf(
 			"you have exceeded your daily quota of %d requests for zone %s\n"+
@@ -148,7 +150,7 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, m, http.StatusTooManyRequests)
 		err = storage.IncrementKeyUsage(ctx, key, queryZone)
 		if err != nil {
-			log.Error("got error when running IncrementKeyUsage():", err)
+			slog.ErrorContext(ctx, "got error when running IncrementKeyUsage():", slog.Any("error", err))
 		}
 		return
 	}
@@ -156,14 +158,14 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 	var priceForecast map[string]calculator.PricePoint
 	ok, cache, err := storage.GetCache(ctx, date, zone)
 	if !ok {
-		log.Debugf(
+		slog.DebugContext(ctx, fmt.Sprintf(
 			"date/zone %s/%s not found in cache, getting from source",
 			date.Format(common.StdDateFormat),
 			zone,
-		)
+		))
 	}
 	if err != nil {
-		log.Errorf("got error when retreving cache: %v", err)
+		slog.ErrorContext(ctx, fmt.Sprintf("got error when retreving cache: %v", err))
 	}
 	if len(cache) != 0 {
 		// re-add timezone info because that is lost in firebase
@@ -174,41 +176,41 @@ func powerPriceHandler(res http.ResponseWriter, req *http.Request) {
 		}
 		priceForecast = cache
 	} else {
-		powerPrices, err := calculator.GetPrice(zone, date, SECURITY_TOKEN)
+		powerPrices, err := calculator.GetPrice(ctx, zone, date, SECURITY_TOKEN)
 		if err != nil {
 			if errors.Is(calculator.ErrorPricesNotAvialableYet, err) {
-				log.Warningf("got Acknowledgement_MarketDocument for zone %s and date %s", zone, date)
+				slog.WarnContext(ctx, fmt.Sprintf("got Acknowledgement_MarketDocument for zone %s and date %s", zone, date))
 				http.Error(res, err.Error(), http.StatusTooEarly)
 				return
 			}
-			log.Errorf("got error when running getPrice(`%s`, `%s`): %v", zone, date, err)
+			slog.ErrorContext(ctx, fmt.Sprintf("got error when running getPrice(`%s`, `%s`): %v", zone, date, err))
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		exchangeRate, err := currency.GetExchangeRate("EUR", "NOK", date)
+		exchangeRate, err := currency.GetExchangeRate(ctx, "EUR", "NOK", date)
 		if err != nil {
-			log.Errorf(`got error when running getExchangeRate("EUR", "NOK"): %v`, err)
+			slog.ErrorContext(ctx, fmt.Sprintf(`got error when running getExchangeRate("EUR", "NOK"): %v`, err))
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		priceForecast = calculator.CalculatePriceForcast(*powerPrices, *exchangeRate)
+		priceForecast = calculator.CalculatePriceForcast(ctx, *powerPrices, *exchangeRate)
 
 		err = storage.StoreCache(ctx, date, zone, priceForecast)
 		if err != nil {
-			log.Errorf("got error when running StoreCache(): %v", err)
+			slog.ErrorContext(ctx, fmt.Sprintf("got error when running StoreCache(): %v", err))
 		}
 	}
 
 	res.Header().Set("Content-Type", "application/json")
 	res.Header().Set("Cache-Control", "public,max-age=31536000,immutable") // 31536000sec --> 1 year
 	if err = json.NewEncoder(res).Encode(&priceForecast); err != nil {
-		log.Errorf("got error when encoding priceForecast: %ov", err)
+		slog.ErrorContext(ctx, fmt.Sprintf("got error when encoding priceForecast: %ov", err))
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = storage.IncrementKeyUsage(ctx, key, queryZone)
 	if err != nil {
-		log.Error("got error when running IncrementKeyUsage():", err)
+		slog.ErrorContext(ctx, "got error when running IncrementKeyUsage():", slog.Any("error", err))
 	}
 }
 

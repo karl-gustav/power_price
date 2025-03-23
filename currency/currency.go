@@ -1,6 +1,7 @@
 package currency
 
 import (
+	"context"
 	"encoding/xml"
 	"fmt"
 	"math"
@@ -19,7 +20,7 @@ type ExchangeRate struct {
 	Date string
 }
 
-func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (*ExchangeRate, error) {
+func GetExchangeRate(ctx context.Context, fromCurrency, toCurrency string, date time.Time) (*ExchangeRate, error) {
 	// always use previous days exchange rate
 	date = date.AddDate(0, 0, -1)
 	// get exchange rage 7 days back in time to make sure we get even though there
@@ -31,7 +32,7 @@ func GetExchangeRate(fromCurrency, toCurrency string, date time.Time) (*Exchange
 		date.AddDate(0, 0, -7).Format(common.StdDateFormat),
 		date.Format(common.StdDateFormat),
 	)
-	exchangeRateInfoBody, err := common.GetUrl(url)
+	exchangeRateInfoBody, err := common.GetUrl(ctx, url)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package calculator
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -52,7 +53,7 @@ var Zones = map[string]Zone{
 	"NO5": Zone("10Y1001A1001A48H"),
 }
 
-func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate currency.ExchangeRate) map[string]PricePoint {
+func CalculatePriceForcast(ctx context.Context, powerPrices PublicationMarketDocument, exchangeRate currency.ExchangeRate) map[string]PricePoint {
 	priceForecast := map[string]PricePoint{}
 	startDate := powerPrices.PeriodTimeInterval.Start.In(common.Loc)
 	startOfDay := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, common.Loc)
@@ -86,7 +87,7 @@ func CalculatePriceForcast(powerPrices PublicationMarketDocument, exchangeRate c
 	return priceForecast
 }
 
-func GetPrice(zone Zone, date time.Time, token string) (*PublicationMarketDocument, error) {
+func GetPrice(ctx context.Context, zone Zone, date time.Time, token string) (*PublicationMarketDocument, error) {
 	endDate := date.Add(24 * time.Hour)
 	url := fmt.Sprintf(
 		priceURL,
@@ -96,7 +97,7 @@ func GetPrice(zone Zone, date time.Time, token string) (*PublicationMarketDocume
 		endDate.In(time.UTC).Format(entsoeDateFormat),
 		token,
 	)
-	priceBody, err := common.GetUrl(url, token)
+	priceBody, err := common.GetUrl(ctx, url, token)
 	if err != nil {
 		return nil, err
 	}

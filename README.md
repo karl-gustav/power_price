@@ -9,5 +9,14 @@ Domains:
 
 XML version from Entsoe:
 ```bash
-YEAR=2025 MONTH=01 DAY=22 ; curl "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=10YNO-2--------T&out_Domain=10YNO-2--------T&periodStart=${YEAR}${MONTH}$((DAY-1))2300&periodEnd=${YEAR}${MONTH}${DAY}2300&securityToken=$(op item get entsoe.eu --fields 'Web Api Security Token')" > ~/tmp/60m.xml
+YEAR=2025 MONTH=1 DAY=8 d=0$DAY m=0$MONTH db=0$((DAY-1)); curl "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=10YNO-2--------T&out_Domain=10YNO-2--------T&periodStart=${YEAR}${m: -2}${db: -2}2300&periodEnd=${YEAR}${m: -2}${d: -2}2300&securityToken=$(op item get entsoe.eu --fields 'Web Api Security Token')"
+```
+
+Prod:
+```bash
+d=2025-03-08 z=NO2 ;curl "https://norway-power.ffail.win/?zone=${z}&date=${d}&key=$(op read op://Personal/power.ffail.win/api-key)" | jq
+```
+Staging:
+```bash
+d=2025-03-08 z=NO2 ;curl "https://latest---power-price-xvexnfx5sa-ew.a.run.app?zone=${z}&date=${d}&key=$(op read op://Personal/power.ffail.win/api-key)" | jq
 ```

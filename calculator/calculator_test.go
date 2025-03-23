@@ -1,6 +1,7 @@
 package calculator
 
 import (
+	"context"
 	"encoding/xml"
 	"os"
 	"slices"
@@ -30,7 +31,7 @@ func Test60mResolution(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	}
-	powerPrices := CalculatePriceForcast(powerPricesXML, exchangeRate)
+	powerPrices := CalculatePriceForcast(context.Background(), powerPricesXML, exchangeRate)
 
 	var keys []string
 	for key := range powerPrices {
@@ -88,7 +89,7 @@ func Test15mResolution(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	}
-	powerPrices := CalculatePriceForcast(powerPricesXML, exchangeRate)
+	powerPrices := CalculatePriceForcast(context.Background(), powerPricesXML, exchangeRate)
 
 	var keys []string
 	for key := range powerPrices {

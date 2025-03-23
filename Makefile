@@ -5,8 +5,10 @@ CONTAINER_NAME=europe-west1-docker.pkg.dev/$(GCP_PROJECT_ID)/cloud-run/$(SERVICE
 
 PORT?=8080
 
+.PHONY: *
+
 run: signin
-	GOOGLE_APPLICATION_CREDENTIALS=~/gcp/gcp_key.json \
+	@if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then echo 'Login to `gcloud` using the command\n\n\033[0;34mgcloud auth application-default login\033[0m\n' && exit 1; fi
 	SECURITY_TOKEN=$$(op item get entsoe.eu --fields "Web Api Security Token") \
 	PORT=$(PORT) go run .
 build: test
@@ -40,6 +42,8 @@ use-latest:
 		--project $(GCP_PROJECT_ID)\
 		--region europe-west1\
 		--platform managed
+watch-test:
+	find -type f -name "*.go" | entr go test ./...
 signin:
 	@op account get >/dev/null 2>&1 || (echo '❌ 1password is not signed in, run:\n\n\t\e[96m\e[1meval $$(op signin)\e[0m\n'; exit 1)
 test:
