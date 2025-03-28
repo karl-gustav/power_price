@@ -9,7 +9,7 @@ Domains:
 
 XML version from Entsoe:
 ```bash
-YEAR=2025 MONTH=1 DAY=8 d=0$DAY m=0$MONTH db=0$((DAY-1)); curl "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=10YNO-2--------T&out_Domain=10YNO-2--------T&periodStart=${YEAR}${m: -2}${db: -2}2300&periodEnd=${YEAR}${m: -2}${d: -2}2300&securityToken=$(op item get entsoe.eu --fields 'Web Api Security Token')"
+YEAR=2025 MONTH=1 DAY=8 ZONE=10YNO-2--------T d=0$DAY m=0$MONTH db=0$((DAY-1)); curl "https://web-api.tp.entsoe.eu/api?documentType=A44&in_Domain=${ZONE}&out_Domain=${ZONE}&periodStart=${YEAR}${m: -2}${db: -2}2300&periodEnd=${YEAR}${m: -2}${d: -2}2300&securityToken=$(op item get entsoe.eu --fields 'Web Api Security Token')"
 ```
 
 Prod:
